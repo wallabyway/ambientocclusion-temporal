@@ -30,12 +30,12 @@ async function main() {
     // Setup scene
     // Skybox
     const environment = new THREE.CubeTextureLoader().load([
-        "skybox/Box_Right.bmp",
-        "skybox/Box_Left.bmp",
-        "skybox/Box_Top.bmp",
-        "skybox/Box_Bottom.bmp",
-        "skybox/Box_Front.bmp",
-        "skybox/Box_Back.bmp"
+        "skybox/Box_Right.jpg",
+        "skybox/Box_Left.jpg",
+        "skybox/Box_Top.jpg",
+        "skybox/Box_Bottom.jpg",
+        "skybox/Box_Front.jpg",
+        "skybox/Box_Back.jpg"
     ]);
     environment.colorSpace = THREE.SRGBColorSpace;
     scene.background = environment;
