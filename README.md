@@ -9,3 +9,8 @@ TSSAO simulates realistic shadows in real-time rendering by approximating ambien
 - power-saving by stopping animation after 16 frames of inactivity.
 - Supports loading of glTF formats in the glb folder, containing MeshOpt compression.
 - Provides VSM shadow maps and SMAA anti-aliasing.
+
+---
+
+- DEMO1: https://wallabyway.github.io/ambientocclusion-temporal/
+- DEMO2: https://wallabyway.github.io/ambientocclusion-temporal/#advanced-rvt2.glb
