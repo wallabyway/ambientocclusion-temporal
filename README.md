@@ -12,5 +12,7 @@ TSSAO simulates realistic shadows in real-time rendering by approximating ambien
 
 ---
 
-- DEMO1: https://wallabyway.github.io/ambientocclusion-temporal/
-- DEMO2: https://wallabyway.github.io/ambientocclusion-temporal/#advanced-rvt2.glb
+- DEMO 1: https://wallabyway.github.io/ambientocclusion-temporal/
+- DEMO 2: https://wallabyway.github.io/ambientocclusion-temporal/#advanced-rvt2.glb
+- DEMO 3: https://wallabyway.github.io/ambientocclusion-temporal/#stadium.glb
+- DEMO 4: https://wallabyway.github.io/ambientocclusion-temporal/#floor4e.glb
