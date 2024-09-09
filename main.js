@@ -6,15 +6,14 @@ import MeshoptDecoder from 'https://cdn.skypack.dev/meshoptimizer/meshopt_decode
 import { Stats } from "./stats.js";
 import { GUI } from 'three/addons/libs/lil-gui.module.min.js';
 import { N8AOPass, N8AOPostPass } from './N8AO.js';
-import { ShadowMesh } from 'three/addons/objects/ShadowMesh.js';
 import { BloomEffect, Effect, EffectComposer, EffectPass, RenderPass, SMAAEffect, SMAAPreset } from "postprocessing";
 async function main() {
     // Setup basic renderer, controls, and profiler
     let clientWidth = window.innerWidth;
     let clientHeight = window.innerHeight;
     const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(75, clientWidth / clientHeight, 10, 10000);
-    camera.position.set(50, 75, 50);
+    const camera = new THREE.PerspectiveCamera(55, clientWidth / clientHeight, 2, 4000);
+    camera.position.set(-50, 375, 350);
     const renderer = new THREE.WebGLRenderer({
         stencil: true
     });
@@ -40,47 +39,47 @@ async function main() {
     environment.colorSpace = THREE.SRGBColorSpace;
     scene.background = environment;
 
-    const groundGeometry = new THREE.PlaneGeometry(1000, 1000);
-    const groundMaterial = new THREE.MeshBasicMaterial({ color: 0xefefe0 });
+    const groundGeometry = new THREE.PlaneGeometry(900, 700);
+    const groundMaterial = new THREE.MeshStandardMaterial({ color: 0xf0e070, envMap : environment });
     const groundMesh = new THREE.Mesh(groundGeometry, groundMaterial);
-    groundMesh.position.y = -10.1;
+    groundMesh.position.y = -20.1;
     groundMesh.rotation.x = -Math.PI / 2;
     groundMesh.receiveShadow = true;
-    //scene.add(groundMesh);
-    function addLight(scene){
-        const directionalLight = new THREE.DirectionalLight(0xffffff, 5);
-        directionalLight.position.set(80, 250, -50);
-        directionalLight.castShadow = true;
-        scene.add(directionalLight);
-        directionalLight.shadow.camera.left = -300;
-        directionalLight.shadow.camera.right = 600;
-        directionalLight.shadow.camera.top = 400;
-        directionalLight.shadow.camera.bottom = -400;
-        directionalLight.shadow.camera.near = 10.5;
-        directionalLight.shadow.camera.far = 1500;
-        directionalLight.shadow.mapSize.width = 4096;
-        directionalLight.shadow.mapSize.height = 4096;
-        directionalLight.shadow.bias = -0.001;
+    scene.add(groundMesh);
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 5);
+    scene.add(directionalLight);
+    function adjustLight(l){
+        l.position.set(80, 250, -50);
+        l.castShadow = true;
+        l.shadow.camera.left = -300;
+        l.shadow.camera.right = 600;
+        l.shadow.camera.top = 400;
+        l.shadow.camera.bottom = -400;
+        l.shadow.camera.near = 10.5;
+        l.shadow.camera.far = 1500;
+        l.shadow.mapSize.width = 4096;
+        l.shadow.mapSize.height = 4096;
+        l.shadow.bias = -0.001;
     }
-    addLight(scene);
+    adjustLight(directionalLight);
     const loader = new GLTFLoader();
     loader.setMeshoptDecoder(MeshoptDecoder);
     const glbfilename = (window.location.hash.length>1) ? window.location.hash.slice(1) : "snowdon-arch.glb";
-    const sponza = (await loader.loadAsync(`glbs/${glbfilename}`)).scene;
-    sponza.traverse(object => {
-        object.castShadow = true;
-        object.receiveShadow = true;
-
-        if (object.material) {
+    const gltf = (await loader.loadAsync(`glbs/${glbfilename}`)).scene;
+    gltf.traverse(object => {
+        if (object.isMesh) {
+            object.castShadow = true;
+            object.receiveShadow = true;
+        }  
+        if (object.material)
             object.material.envMap = environment;
-            if (object.material.map) {
-                //object.material.map.anisotropy = renderer.capabilities.getMaxAnisotropy();
-            }
-        }
     })
-    sponza.scale.set(10, 10, 10)
-    scene.add(sponza);
+    
+    gltf.scale.set(10, 10, 10)
+    scene.add(gltf);
     const effectController = {
+        cutplane: 230.0,
+        shadow:-54.0,
         aoSamples: 10.0,
         denoiseSamples: 1.0,
         denoiseRadius: 0.0,
@@ -97,6 +96,8 @@ async function main() {
         accumulate: true
     };
     const gui = new GUI();
+    gui.add(effectController, 'cutplane', 1, 230).onChange( v => { requestRenderIfNotRequested(); } );
+    gui.add(effectController, 'shadow', -300, 300).onChange( v => { renderer.shadowMap.needsUpdate = true; requestRenderIfNotRequested(); } );
     gui.add(effectController, "aoSamples", 1.0, 64.0, 1.0);
     gui.add(effectController, "denoiseSamples", 1.0, 64.0, 1.0);
     gui.add(effectController, "denoiseRadius", 0.0, 24.0, 0.01);
@@ -129,24 +130,14 @@ async function main() {
     gui.add(effectController, "colorMultiply");
     gui.add(effectController, "accumulate");
     gui.add(effectController, "renderMode", ["Combined", "AO", "No AO", "Split", "Split AO"]);
-    // Post Effects
-    //  const composer = new EffectComposer(renderer);
-    /* const n8aopass = new N8AOPass(
-         scene,
-         camera,
-         clientWidth,
-         clientHeight
-     );
-     const smaaPass = new SMAAPass(clientWidth, clientHeight);
-     composer.addPass(n8aopass);
-     composer.addPass(smaaPass);*/
+
     const composer = new EffectComposer(renderer, {
         stencilBuffer: true,
         depthBuffer: true,
         frameBufferType: THREE.HalfFloatType
     });
     const renderPass = new RenderPass(scene, camera);
-    renderPass.clearPass.setClearFlags(true, true, true);
+    renderPass.clearPass.setClearFlags(false, true, true);
     composer.addPass(renderPass);
     const n8aopass = new N8AOPostPass(
         scene,
@@ -167,19 +158,26 @@ async function main() {
         renderer.setSize(clientWidth, clientHeight);
         composer.setSize(clientWidth, clientHeight);
     });
-    const timerDOM = document.getElementById("aoTime");
-    const aoMeta = document.getElementById("aoMetadata");
-    n8aopass.enableDebugMode();
-    const clock = new THREE.Clock();
+
+    const clippingPlane = new THREE.Plane(new THREE.Vector3(0, -1, 0), 1.0);
+    renderer.clippingPlanes = [clippingPlane];
+    renderer.shadowMap.clippingPlanes = [clippingPlane];
+    renderer.shadowMap.autoUpdate = false;
+
+    controls.addEventListener('change', requestRenderIfNotRequested);
+    controls.screenSpacePanning = true;
+
+    function requestRenderIfNotRequested() {
+        if (n8aopass.frame > 17) requestAnimationFrame(animate);
+    }
 
     function animate() {
-        aoMeta.innerHTML = `${clientWidth}x${clientHeight}`
-        const spin = 2 * clock.getDelta();
-
         n8aopass.configuration.aoRadius = effectController.aoRadius;
         n8aopass.configuration.distanceFalloff = effectController.distanceFalloff;
         n8aopass.configuration.intensity = effectController.intensity;
         n8aopass.configuration.aoSamples = effectController.aoSamples;
+        renderer.clippingPlanes[0].constant = effectController.cutplane;
+        directionalLight.position.z = effectController.shadow;
         n8aopass.configuration.denoiseRadius = effectController.denoiseRadius;
         n8aopass.configuration.denoiseSamples = effectController.denoiseSamples;
         n8aopass.configuration.renderMode = ["Combined", "AO", "No AO", "Split", "Split AO"].indexOf(effectController.renderMode);
@@ -190,11 +188,11 @@ async function main() {
         n8aopass.configuration.colorMultiply = effectController.colorMultiply;
         n8aopass.configuration.accumulate = effectController.accumulate;
         composer.render();
-        timerDOM.innerHTML = n8aopass.lastTime.toFixed(2);
         controls.update();
         stats.update();
-        requestAnimationFrame(animate);
+        if (n8aopass.frame < 18) requestAnimationFrame(animate);
     }
+    renderer.shadowMap.needsUpdate = true; 
     requestAnimationFrame(animate);
 }
 main();
